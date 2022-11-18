@@ -6,5 +6,35 @@
       <summary>Disables enabling display on wakeup from suspend</summary>
       <description>If the display should not be woken up on resume from suspend. On a mobile device you most likely want to enable this.</description>
     </key>
+    <key name="auto-brightness-linear" type="b">
+      <default>true</default>
+      <summary>Set brightness linear</summary>
+      <description>Set brightness in auto mode linear dependent on the ambient-0 to ambient-100 values</description>
+    </key>
+    <key name="auto-brightness-delay" type="i">
+      <default>5</default>
+      <summary>Delay brightness-less update in second</summary>
+      <description>Wait for amount of seconds and check ambient light again before turning down screen brightness.</description>
+    </key>
+    <key name="off-brightness-level" type="i">
+      <default>0</default>
+      <summary>Brightness value when panel is off</summary>
+      <description>Brightness value (raw value) to use when panel is off</description>
+    </key>
+    <key name="min-brightness-level" type="i">
+      <default>20</default>
+      <summary>Minimimal brightness value (raw value) when panel is on</summary>
+      <description>Minimal brightness value (raw value) to use when brightness slider at 0 and panel still on</description>
+    </key>
+    <key name="min-step-down" type="i">
+      <default>3</default>
+      <summary>Minimimal percent difference for step down</summary>
+      <description>The brgihtness level always steps up dependent on the ambient light. But will only step down if the difference in percent is bigger then this value. This prevents jumping of the brightness on low ambient light changes.</description>
+    </key>
+    <key name="linear-brgihtness-points" type="aai">
+      <default>[[0, 0], [5, 5], [10, 30], [25, 200], [45, 500], [65, 1000], [85, 1500], [100, 2500]]</default>
+      <summary>Array of points for brightness calculation</summary>
+      <description>First value is the brightness in %, second value is the ambient light value. With defasult settings [45, 500] ambient light at 500 and less will scale the brightness betweeen 25% and 45%</description>
+    </key>
   </schema>
 </schemalist>
