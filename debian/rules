@@ -8,6 +8,8 @@ export DEB_LDFLAGS_MAINT_STRIP = -Wl,-Bsymbolic-functions
 
 export GSD_MAJOR_VERSION = $(shell echo $(DEB_VERSION_UPSTREAM) | cut -d~ -f1 | cut -d. -f1)
 
+export deb_udevdir = $(shell pkg-config --variable=udevdir udev | sed s,^/,,)
+
 %:
 	dh $@
 
