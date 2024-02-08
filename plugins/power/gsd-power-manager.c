@@ -1296,6 +1296,7 @@ backlight_enable (GsdPowerManager *manager)
         } else {
                 if (manager->backlight) {
                         gsd_backlight_set_brightness_min(manager->backlight, min_brightness);
+                        gsd_backlight_set_brightness_async(manager->backlight, min_brightness, NULL, NULL, NULL);
                 }
         }
 
