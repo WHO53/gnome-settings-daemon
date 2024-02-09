@@ -34,7 +34,7 @@
     <key name="linear-brgihtness-points" type="aai">
       <default>[[0, 0], [5, 5], [10, 30], [25, 200], [45, 500], [65, 1000], [85, 1500], [100, 2500]]</default>
       <summary>Array of points for brightness calculation</summary>
-      <description>First value is the brightness in %, second value is the ambient light value. With defasult settings [45, 500] ambient light at 500 and less will scale the brightness betweeen 25% and 45%</description>
+      <description>First value is the brightness in %, second value is the ambient light value. With defasult settings [45, 500] ambient light at 500 and less will scale the brightness betweeen 25% and 45%. You can add or remove points but keep them in ascending order. After screen OFF/ON sycle the new values will be initialized.</description>
     </key>
   </schema>
 </schemalist>

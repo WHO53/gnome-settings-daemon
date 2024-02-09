@@ -3135,20 +3135,23 @@ get_linear_brightness (GsdPowerManager *manager)
 
         ret = 100.0;
         light_level = manager->ambient_last_absolute;
-
+        if((gint)light_level > g_array_index(manager->linear_brightness_points, gint, manager->points_amount*2 - 1))
+                return 100;
         for (int j = 0; j < manager->points_amount*2; j+=2 ){
-                gdouble pt1[2] = {(gdouble)g_array_index(manager->linear_brightness_points, gint, j),
-                                        (gdouble)g_array_index(manager->linear_brightness_points, gint, j+1)};
-                gdouble pt2[2] = {(gdouble)g_array_index(manager->linear_brightness_points, gint, j+2),
-                                        (gdouble)g_array_index(manager->linear_brightness_points, gint, j+3)};
-
-                if(light_level > pt1[1] && light_level <= pt2[1]){
+                gboolean foundValue = 0;
+                gint pt1[] = {g_array_index(manager->linear_brightness_points, gint, j),
+                                        g_array_index(manager->linear_brightness_points, gint, j+1)};
+                gint pt2[] = {g_array_index(manager->linear_brightness_points, gint, j+2),
+                                        g_array_index(manager->linear_brightness_points, gint, j+3)};
+                if(light_level > (gdouble)pt1[1] && light_level <= (gdouble)pt2[1]){
                         if(j==0)
-                                ret = (pt2[0] - pt1[0]) / (pt2[1] - pt1[1]) * (light_level - pt1[1]);
+                                ret = ((gdouble)pt2[0] - (gdouble)pt1[0]) / ((gdouble)pt2[1] - (gdouble)pt1[1]) * (light_level - (gdouble)pt1[1]);
                         else
-                                ret = (pt2[0] - pt1[0]) / (pt2[1] - pt1[1]) * (light_level - pt1[1]) + (pt2[0] - pt1[0]);
-                        j = manager->points_amount*2;
+                                ret = ((gdouble)pt2[0] - (gdouble)pt1[0]) / ((gdouble)pt2[1] - (gdouble)pt1[1]) * (light_level - (gdouble)pt1[1]) + (gdouble)pt1[0];
+                        foundValue = 1;
                 }
+                if(foundValue)
+                        break;
         }
 
         if(ret > 100.0)
