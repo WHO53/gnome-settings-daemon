@@ -36,6 +36,24 @@
       <summary>Enable the ALS sensor</summary>
       <description>If the ambient light sensor functionality is enabled.</description>
     </key>
+    <key name="ambient-brightness-points" type="a{ii}">
+      <default>{}</default>
+      <summary>Dictionnary of ambient points for brightness calculation</summary>
+      <description>
+        Key is ambient light as lux, value is the brightness as %. Ambient keys should be sorted.
+        Example: {1: 2, 500: 10, 1000: 15, 2000: 20, 3000: 25, 3500: 30, 4000: 35, 4500: 40, 5000: 50, 6000: 70, 7000: 75, 7500: 80, 9000: 100}
+      </description>
+    </key>
+    <key name="ambient-light-max" type="i">
+      <default>1000</default>
+      <summary>Maximal ambient light value</summary>
+      <description>Value used to generate brightness points if none defined</description>
+    </key>
+    <key name="ambient-light-steps" type="i">
+      <default>5</default>
+      <summary>How many steps to ramp from 0 to max</summary>
+      <description>Value used to generate brightness points if none defined</description>
+    </key>
     <key name="power-button-action" enum="org.gnome.settings-daemon.GsdPowerButtonActionType">
       <default>'suspend'</default>
       <summary>Power button action</summary>
