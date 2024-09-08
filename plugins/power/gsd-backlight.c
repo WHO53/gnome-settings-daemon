@@ -133,16 +133,8 @@ gsd_backlight_udev_resolve (GsdBacklight *backlight)
         g_assert (backlight->udev != NULL);
 
         devices = g_udev_client_query_by_subsystem (backlight->udev, "backlight");
-        if (devices == NULL) {
-                /* Try looking at /sys/class/leds/lcd-backlight. */
-                backlight->udev_device = g_udev_client_query_by_sysfs_path (backlight->udev,
-                                                           "/sys/class/leds/lcd-backlight");
-
-                /* Always return, as even if no udev_device has been
-                 * found we don't have any devices to iterate upon,
-                 * so it's a lost cause. */
+        if (devices == NULL)
                 return;
-        }
 
         /* Search the backlight devices and prefer the types:
          * firmware -> platform -> raw */
