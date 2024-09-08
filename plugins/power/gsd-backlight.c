@@ -485,41 +485,6 @@ gsd_backlight_set_brightness_val_async (GsdBacklight *backlight,
 #ifdef __linux__
         if (backlight->udev_device != NULL) {
                 BacklightHelperData *task_data;
-                g_autoptr(GFile) brightness_file = NULL;
-                g_autoptr(GFileInfo) brightness_info = NULL;
-                g_autofree gchar *brightness_path = NULL;
-
-                /* Check if the file is writable first */
-                brightness_path = g_build_filename (g_udev_device_get_sysfs_path (backlight->udev_device),
-                                                    "brightness", NULL);
-                brightness_file = g_file_new_for_path (brightness_path);
-                brightness_info = g_file_query_info (brightness_file, G_FILE_ATTRIBUTE_ACCESS_CAN_WRITE,
-                                                     G_FILE_QUERY_INFO_NONE, NULL, NULL);
-
-                if (brightness_info != NULL && g_file_info_has_attribute (brightness_info,
-                                                                          G_FILE_ATTRIBUTE_ACCESS_CAN_WRITE)) {
-                        if (g_file_info_get_attribute_boolean (brightness_info,
-                                                               G_FILE_ATTRIBUTE_ACCESS_CAN_WRITE)) {
-                                /* Okay! Write directly */
-                                g_autofree gchar *brightness_target = NULL;
-
-                                g_debug ("Writing brightness directly as file is writable");
-
-                                brightness_target = g_strdup_printf ("%i",
-                                                                     backlight->brightness_target);
-
-                                if (g_file_set_contents_full (brightness_path, brightness_target,
-                                                              strlen(brightness_target),
-                                                              G_FILE_SET_CONTENTS_NONE, 0666,
-                                                              &error)) {
-                                        g_debug ("Brightness set correctly to %s", brightness_target);
-                                        return;
-                                } else {
-                                        g_warning ("Unable to directly set brightness: %s", error->message);
-                                }
-
-                        }
-                }
 
                 if (backlight->logind_proxy) {
                         g_dbus_proxy_call (backlight->logind_proxy,
