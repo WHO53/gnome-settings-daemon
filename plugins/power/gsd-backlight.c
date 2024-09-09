@@ -25,6 +25,8 @@
 #include "gsd-power-constants.h"
 #include "gsd-power-manager.h"
 
+#include <gbinder.h>
+
 #ifdef __linux__
 #include <gudev/gudev.h>
 #endif /* __linux__ */
@@ -51,6 +53,11 @@ struct _GsdBacklight
         gint idle_update;
 #endif /* __linux__ */
 
+        GBinderServiceManager *service_manager;
+        GBinderRemoteObject *remote;
+        GBinderClient *client;
+        gboolean use_binder;
+
         GnomeRRScreen *rr_screen;
         gboolean builtin_display_disabled;
 };
@@ -65,6 +72,23 @@ enum {
 #define SYSTEMD_DBUS_PATH                       "/org/freedesktop/login1/session/auto"
 #define SYSTEMD_DBUS_INTERFACE                  "org.freedesktop.login1.Session"
 
+#define BINDER_LIGHT_AIDL_DEVICE "/dev/binder"
+#define BINDER_LIGHT_AIDL_IFACE "android.hardware.light.ILights"
+
+#define BINDER_LIGHT_HIDL_DEVICE "/dev/hwbinder"
+#define BINDER_LIGHT_HIDL_IFACE "android.hardware.light@2.0::ILight"
+
+#define BINDER_LIGHT_SLOT "default"
+#define BINDER_LIGHT_SET_LIGHT 1
+
+typedef struct {
+    int32_t color;
+    int32_t flashMode;
+    int32_t flashOnMs;
+    int32_t flashOffMs;
+    int32_t brightnessMode;
+} LightState;
+
 static GParamSpec *props[PROP_LAST];
 
 static void     gsd_backlight_initable_iface_init (GInitableIface  *iface);
@@ -76,6 +100,37 @@ static gboolean gsd_backlight_initable_init       (GInitable       *initable,
 G_DEFINE_TYPE_EXTENDED (GsdBacklight, gsd_backlight, G_TYPE_OBJECT, 0,
                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
                                                gsd_backlight_initable_iface_init);)
+
+static gboolean
+gsd_backlight_init_binder (GsdBacklight *backlight, const gchar *device, const gchar *iface)
+{
+        backlight->service_manager = gbinder_servicemanager_new(device);
+      
+        if(!backlight->service_manager) {
+          g_warning("Failed to get create service manager");
+          return FALSE;
+        }
+      
+        backlight->remote = gbinder_servicemanager_get_service_sync(backlight->service_manager,
+            g_strdup_printf("%s/%s", iface, BINDER_LIGHT_SLOT),
+            NULL);
+        
+        if(!backlight->remote) {
+          g_warning("Failed to get light service");
+          return FALSE;
+        }
+      
+        backlight->client = gbinder_client_new(backlight->remote, iface);
+        if (!backlight->client) {
+          g_warning("Failed to create binder client");
+          return FALSE;
+        }
+      
+        backlight->brightness_min = 1;
+        backlight->brightness_max = 255;
+        backlight->use_binder = TRUE;
+        return TRUE;
+}
 
 #ifdef __linux__
 static GUdevDevice*
@@ -455,6 +510,39 @@ gsd_backlight_get_brightness (GsdBacklight *backlight, gint *target)
         return ABS_TO_PERCENTAGE (backlight->brightness_min, backlight->brightness_max, backlight->brightness_val);
 }
 
+static gboolean
+gsd_backlight_set_brightness_binder (GsdBacklight *backlight, gint value, GError **error)
+{
+      GBinderLocalRequest *req;
+      GBinderRemoteReply *reply;
+      GBinderWriter writer;
+      LightState *light_state;
+      int status;
+  
+      req = gbinder_client_new_request(backlight->client);
+      gbinder_local_request_init_writer(req, &writer);
+      
+      light_state = gbinder_writer_new0(&writer, LightState);
+      light_state->color = (0xff << 24) | (value << 16) | (value << 8) | value;
+      light_state->brightnessMode = 1;
+  
+      gbinder_writer_append_int32(&writer, 0);
+      gbinder_writer_append_buffer_object(&writer, light_state, sizeof(*light_state));
+  
+      reply = gbinder_client_transact_sync_reply(backlight->client, BINDER_LIGHT_SET_LIGHT, req, &status);
+      gbinder_local_request_unref(req);
+  
+      if (status != GBINDER_STATUS_OK) {
+          g_set_error(error, GSD_POWER_MANAGER_ERROR, GSD_POWER_MANAGER_ERROR_FAILED,
+                      "Failed to set display brightness");
+          return FALSE;
+      }
+
+      gbinder_remote_reply_unref(reply);
+  
+      return TRUE;
+}
+
 static void
 gsd_backlight_set_brightness_val_async (GsdBacklight *backlight,
                                         int value,
@@ -473,6 +561,19 @@ gsd_backlight_set_brightness_val_async (GsdBacklight *backlight,
         backlight->brightness_target = value;
 
         task = g_task_new (backlight, cancellable, callback, user_data);
+
+    if (backlight->use_binder) {
+      if (gsd_backlight_set_brightness_binder(backlight, value, &error)) {
+        backlight->brightness_val = value;
+        g_object_notify_by_pspec (G_OBJECT (backlight), props[PROP_BRIGHTNESS]);
+        g_task_return_int (task, gsd_backlight_get_brightness (backlight, NULL));
+      } else {
+        g_task_return_error(task, error);
+
+      }
+      g_object_unref (task);
+      return;
+    }
 
 #ifdef __linux__
         if (backlight->udev_device != NULL) {
@@ -818,6 +919,17 @@ gsd_backlight_initable_init (GInitable       *initable,
                              GError         **error)
 {
         GsdBacklight *backlight = GSD_BACKLIGHT (initable);
+  
+    if (gsd_backlight_init_binder(backlight, BINDER_LIGHT_AIDL_DEVICE, BINDER_LIGHT_AIDL_IFACE)) {
+      g_debug("Yep! AIDL Binderrrr");
+      return TRUE;
+    }
+
+    if (gsd_backlight_init_binder(backlight, BINDER_LIGHT_HIDL_DEVICE, BINDER_LIGHT_HIDL_IFACE)) {
+      g_debug("Yep! HIDL Binderrrr");
+      return TRUE;
+    }
+
         GnomeRROutput* output = NULL;
         GError *logind_error = NULL;
 
